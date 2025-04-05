@@ -1,113 +1,175 @@
 #include <stdio.h>
+#include <ctype.h>
+#include <stdlib.h>
 
-// Estrutura das cartas
-typedef struct {
-    char nome[50];
-    int forca;
-    int velocidade;
-    int inteligencia;
-} Carta;
+#define SIZE 8
 
-// Função para comparar um atributo
-void compararCartas(Carta carta1, Carta carta2, int atributo) {
-    int valor1, valor2;
-
-    switch (atributo) {
-        case 1:
-            valor1 = carta1.forca;
-            valor2 = carta2.forca;
-            break;
-        case 2:
-            valor1 = carta1.velocidade;
-            valor2 = carta2.velocidade;
-            break;
-        case 3:
-            valor1 = carta1.inteligencia;
-            valor2 = carta2.inteligencia;
-            break;
-        default:
-            printf("Opção inválida!\n");
-            return;
-    }
-
-    // Exibe o resultado
-    if (valor1 > valor2) {
-        printf("%s venceu!\n", carta1.nome);
-    } else if (valor2 > valor1) {
-        printf("%s venceu!\n", carta2.nome);
-    } else {
-        printf("Empate!\n");
+void inicializarTabuleiro(char tabuleiro[SIZE][SIZE]) {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            tabuleiro[i][j] = '-';
+        }
     }
 }
 
-// Função para comparação de dois atributos combinados
-void compararDoisAtributos(Carta carta1, Carta carta2, int atributo1, int atributo2) {
-    int soma1 = 0, soma2 = 0;
-
-    switch (atributo1) {
-        case 1: soma1 += carta1.forca; soma2 += carta2.forca; break;
-        case 2: soma1 += carta1.velocidade; soma2 += carta2.velocidade; break;
-        case 3: soma1 += carta1.inteligencia; soma2 += carta2.inteligencia; break;
-    }
-    
-    switch (atributo2) {
-        case 1: soma1 += carta1.forca; soma2 += carta2.forca; break;
-        case 2: soma1 += carta1.velocidade; soma2 += carta2.velocidade; break;
-        case 3: soma1 += carta1.inteligencia; soma2 += carta2.inteligencia; break;
-    }
-
-    // Exibe o vencedor com base na soma dos dois atributos
-    if (soma1 > soma2) {
-        printf("%s venceu!\n", carta1.nome);
-    } else if (soma2 > soma1) {
-        printf("%s venceu!\n", carta2.nome);
-    } else {
-        printf("Empate!\n");
+void imprimirTabuleiro(char tabuleiro[SIZE][SIZE]) {
+    printf("\n  A B C D E F G H\n");
+    for (int i = SIZE - 1; i >= 0; i--) {
+        printf("%d ", i + 1);
+        for (int j = 0; j < SIZE; j++) {
+            // Usando cores no terminal
+            if (tabuleiro[i][j] == '*') {
+                printf("\033[1;32m%c \033[0m", tabuleiro[i][j]);  // Verde para movimentos
+            } else if (tabuleiro[i][j] != '-') {
+                printf("\033[1;33m%c \033[0m", tabuleiro[i][j]);  // Amarelo para a peça
+            } else {
+                printf("- ");  // Para casas vazias
+            }
+        }
+        printf("\n");
     }
 }
 
-// Menu interativo
+int estaDentro(int x, int y) {
+    return x >= 0 && x < SIZE && y >= 0 && y < SIZE;
+}
+
+int validarPosicao(char colunaLetra, int linha) {
+    int col = toupper(colunaLetra) - 'A';
+    return (col >= 0 && col < SIZE && linha >= 1 && linha <= SIZE) ? col : -1;
+}
+
+void movimentoTorre(char tabuleiro[SIZE][SIZE], int row, int col) {
+    for (int i = 0; i < SIZE; i++) {
+        if (i != row) tabuleiro[i][col] = '*';  // vertical
+        if (i != col) tabuleiro[row][i] = '*';  // horizontal
+    }
+}
+
+void movimentoBispo(char tabuleiro[SIZE][SIZE], int row, int col) {
+    int i = 1;
+    while (estaDentro(row + i, col + i)) { tabuleiro[row + i][col + i] = '*'; i++; }
+    i = 1;
+    while (estaDentro(row + i, col - i)) { tabuleiro[row + i][col - i] = '*'; i++; }
+    i = 1;
+    while (estaDentro(row - i, col + i)) { tabuleiro[row - i][col + i] = '*'; i++; }
+    i = 1;
+    while (estaDentro(row - i, col - i)) { tabuleiro[row - i][col - i] = '*'; i++; }
+}
+
+void movimentoRainha(char tabuleiro[SIZE][SIZE], int row, int col) {
+    int i;
+
+    // Diagonais
+    i = 1;
+    do {
+        if (!estaDentro(row + i, col + i)) break;
+        tabuleiro[row + i][col + i] = '*';
+        i++;
+    } while (1);
+
+    i = 1;
+    do {
+        if (!estaDentro(row + i, col - i)) break;
+        tabuleiro[row + i][col - i] = '*';
+        i++;
+    } while (1);
+
+    i = 1;
+    do {
+        if (!estaDentro(row - i, col + i)) break;
+        tabuleiro[row - i][col + i] = '*';
+        i++;
+    } while (1);
+
+    i = 1;
+    do {
+        if (!estaDentro(row - i, col - i)) break;
+        tabuleiro[row - i][col - i] = '*';
+        i++;
+    } while (1);
+
+    // Verticais e horizontais
+    i = 0;
+    do {
+        if (i != row) tabuleiro[i][col] = '*';
+        i++;
+    } while (i < SIZE);
+
+    i = 0;
+    do {
+        if (i != col) tabuleiro[row][i] = '*';
+        i++;
+    } while (i < SIZE);
+}
+
+void salvarTabuleiroEmArquivo(char tabuleiro[SIZE][SIZE]) {
+    FILE *file = fopen("tabuleiro.txt", "w");
+    if (file == NULL) {
+        printf("Erro ao abrir o arquivo para salvar!\n");
+        return;
+    }
+
+    fprintf(file, "  A B C D E F G H\n");
+    for (int i = SIZE - 1; i >= 0; i--) {
+        fprintf(file, "%d ", i + 1);
+        for (int j = 0; j < SIZE; j++) {
+            fprintf(file, "%c ", tabuleiro[i][j]);
+        }
+        fprintf(file, "\n");
+    }
+    fclose(file);
+    printf("\nTabuleiro salvo em 'tabuleiro.txt'.\n");
+}
+
 int main() {
-    Carta carta1 = {"Dragão", 90, 70, 60};
-    Carta carta2 = {"Cavaleiro", 80, 80, 75};
-    
-    int opcao, atributo1, atributo2;
+    char tabuleiro[SIZE][SIZE];
+    int row, col;
+    char colunaLetra, peca;
+    char repetir;
 
     do {
-        printf("\n===== SUPER TRUNFO =====\n");
-        printf("1 - Comparar um atributo\n");
-        printf("2 - Comparar dois atributos\n");
-        printf("3 - Sair\n");
-        printf("Escolha uma opção: ");
-        scanf("%d", &opcao);
+        inicializarTabuleiro(tabuleiro);
 
-        switch (opcao) {
-            case 1:
-                printf("Escolha um atributo para comparar:\n");
-                printf("1 - Força\n2 - Velocidade\n3 - Inteligência\n");
-                scanf("%d", &atributo1);
-                compararCartas(carta1, carta2, atributo1);
-                break;
+        printf("Escolha uma peça (T = Torre, B = Bispo, R = Rainha): ");
+        scanf(" %c", &peca);
+        peca = toupper(peca);
 
-            case 2:
-                printf("Escolha dois atributos para comparar:\n");
-                printf("1 - Força\n2 - Velocidade\n3 - Inteligência\n");
-                printf("Escolha o primeiro atributo: ");
-                scanf("%d", &atributo1);
-                printf("Escolha o segundo atributo: ");
-                scanf("%d", &atributo2);
-                compararDoisAtributos(carta1, carta2, atributo1, atributo2);
-                break;
+        printf("Digite a posição inicial (ex: D4): ");
+        scanf(" %c%d", &colunaLetra, &row);
+        col = validarPosicao(colunaLetra, row);
+        row -= 1;  // Ajuste para 0-based
 
-            case 3:
-                printf("Saindo do jogo...\n");
-                break;
-
-            default:
-                printf("Opção inválida! Tente novamente.\n");
+        if (col == -1 || !estaDentro(row, col)) {
+            printf("Posição inválida!\n");
+            continue;
         }
 
-    } while (opcao != 3);
+        tabuleiro[row][col] = peca;
+
+        switch (peca) {
+            case 'T':
+                movimentoTorre(tabuleiro, row, col);
+                break;
+            case 'B':
+                movimentoBispo(tabuleiro, row, col);
+                break;
+            case 'R':
+                movimentoRainha(tabuleiro, row, col);
+                break;
+            default:
+                printf("Peça inválida!\n");
+                continue;
+        }
+
+        imprimirTabuleiro(tabuleiro);
+        salvarTabuleiroEmArquivo(tabuleiro);
+
+        printf("\nDeseja jogar novamente? (S/N): ");
+        scanf(" %c", &repetir);
+        repetir = toupper(repetir);
+
+    } while (repetir == 'S');
 
     return 0;
 }
